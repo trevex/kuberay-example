@@ -1,6 +1,6 @@
 terraform {
   backend "gcs" {
-    bucket = "nvoss-kube-ray-tf-state"
+    bucket = "nvoss-kuberay-tf-state"
     prefix = "terraform/1-operator"
   }
 }
@@ -22,7 +22,7 @@ data "google_client_config" "cluster" {}
 data "google_container_cluster" "cluster" {
   project  = var.project
   location = var.region
-  name     = "cluster-kube-ray"
+  name     = "cluster-kuberay"
 }
 
 provider "kubernetes" {

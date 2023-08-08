@@ -1,3 +1,3 @@
-project = "nvoss-kube-ray"
+project = "nvoss-kuberay"
 region = "europe-west4"
 

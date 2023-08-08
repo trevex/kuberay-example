@@ -1,5 +1,5 @@
 ```bash
-export PROJECT="nvoss-kube-ray"
+export PROJECT="nvoss-kuberay"
 export REGION="europe-west4"
 gsutil mb -p ${PROJECT} -l ${REGION} -b on gs://${PROJECT}-tf-state
 gsutil versioning set on gs://${PROJECT}-tf-state
@@ -10,7 +10,7 @@ gcloud auth application-default login --project ${PROJECT}
 __TODO__: Update tfvars
 
 ```bash
-rg -l 'backend "gcs"' | xargs -I{} sed -i "s/nvoss-kube-ray-tf-state/${PROJECT}-tf-state/g" {}
+rg -l 'backend "gcs"' | xargs -I{} sed -i "s/nvoss-kuberay-tf-state/${PROJECT}-tf-state/g" {}
 ```
 
 
@@ -22,7 +22,7 @@ terraform -chdir=0-cluster apply
 
 
 ```bash
-gcloud container clusters get-credentials cluster-kube-ray --region ${REGION} --project ${PROJECT}
+gcloud container clusters get-credentials cluster-kuberay --region ${REGION} --project ${PROJECT}
 ```
 
 

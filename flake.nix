@@ -1,5 +1,5 @@
 {
-  description = "kube-ray-example";
+  description = "kuberay-example";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
@@ -20,7 +20,7 @@
       in
       rec {
         devShell = pkgs.mkShell rec {
-          name = "kube-ray-example";
+          name = "kuberay-example";
 
           buildInputs = with pkgs; [
             gnumake

@@ -1,6 +1,6 @@
 terraform {
   backend "gcs" {
-    bucket = "nvoss-kube-ray-tf-state"
+    bucket = "nvoss-kuberay-tf-state"
     prefix = "terraform/0-cluster"
   }
 }
@@ -49,7 +49,7 @@ resource "google_artifact_registry_repository" "images" {
 module "network" {
   source = "../modules//network"
 
-  name = "network-kube-ray"
+  name = "network-kuberay"
   subnetworks = [{
     name_affix    = "main" # full name will be `${name}-${name_affix}-${region}`
     ip_cidr_range = "10.10.0.0/20"
@@ -71,11 +71,11 @@ module "network" {
 module "cluster" {
   source = "../modules//cluster"
 
-  name                   = "cluster-kube-ray"
+  name                   = "cluster-kuberay"
   project                = var.project
   region                 = var.region
   network_id             = module.network.id
-  subnetwork_id          = module.network.subnetworks["network-kube-ray-main-${var.region}"].id
+  subnetwork_id          = module.network.subnetworks["network-kuberay-main-${var.region}"].id
   master_ipv4_cidr_block = "172.16.0.0/28"
 
   depends_on = [module.network]
