@@ -67,4 +67,4 @@ curl http://127.0.0.1:8000/imagine\?prompt=a+yellow+car+with+six+wheels > exampl
 * Before scaling out in a single region consider adding a second zone to your node-pool. For independent scaling of zones a second node-pool is also an option.
 * Consider persisting logs: https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/logging.html
 * We intentionally use Ubuntu rather than COS as Ray's default images seem to have issues with non-Debian host-OSs.
-
+* Ray's images are fairly big (~10GB), consider duplicating them to artifact registry to benefit from image streaming: https://cloud.google.com/kubernetes-engine/docs/how-to/image-streaming
