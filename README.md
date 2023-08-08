@@ -1,3 +1,9 @@
+# `kuberay-example`
+
+Before starting make sure `gcloud` and `terraform` are installed and create a new project with billing set up.
+
+## Bucket for terraform-state
+
 ```bash
 export PROJECT="nvoss-kuberay"
 export REGION="europe-west4"
@@ -7,40 +13,58 @@ gsutil versioning set on gs://${PROJECT}-tf-state
 gcloud auth application-default login --project ${PROJECT}
 ```
 
-__TODO__: Update tfvars
+## Update terraform-variables
 
+Update all *.tfvars files and make sure the state is saved to your bucket:
 ```bash
 rg -l 'backend "gcs"' | xargs -I{} sed -i "s/nvoss-kuberay-tf-state/${PROJECT}-tf-state/g" {}
 ```
 
+## Create the GKE cluster and node-pools
 
 ```bash
 terraform -chdir=0-cluster init
 terraform -chdir=0-cluster apply
 ```
 
+__NOTE__: Checkout `0-cluster/main.tf` for the particular node-pool configurations and how [time-sharing](https://cloud.google.com/kubernetes-engine/docs/concepts/timesharing-gpus) of GPUs is set up.
 
+## Install the `kuberay-operator`
+```bash
+terraform -chdir=1-kuberay init
+terraform -chdir=1-kuberay apply
+```
 
+__NOTE__: For simplicity we just use the `default`-namespace...
+
+## Create an example `RayService`
+
+Get credentials for the GKE cluster:
 ```bash
 gcloud container clusters get-credentials cluster-kuberay --region ${REGION} --project ${PROJECT}
 ```
 
-
+Create the example stable-diffusion `RayService`:
 ```bash
-terraform -chdir=1-operator init
-terraform -chdir=1-operator apply
+kubectl apply -f ray-service.yaml
+kubectl describe rayservices
 ```
 
-__NOTE__: Well runs in default namespace :D
+To access the dashboard you can port-forward as follows:
+```bash
+kubectl port-forward svc/stable-diffusion-head-svc --address 0.0.0.0 8265:8265
+```
 
+To send a test-request forward the `serve-svc` and do HTTP requests as follows:
+```bash
+kubectl port-forward svc/stable-diffusion-serve-svc 8000
+curl http://127.0.0.1:8000/imagine\?prompt=a+yellow+car+with+six+wheels > example.png
+```
 
+## Final thoughts:
 
-# TODO
-
-* Use GKE Standard cluster, create tainted node-pool for GPU workloads
-* Use time-sharing and make sure node fits workload: https://cloud.google.com/kubernetes-engine/docs/concepts/timesharing-gpus
-* Configure RayCluster with the correct requests and selectors: https://github.com/richardsliu/ray-on-gke/blob/main/user/modules/kuberay/kuberay-values.yaml
-* Deploy a RayService and make sure autoscaling fits the time-sharing setup: https://docs.ray.io/en/master/serve/scaling-and-resource-allocation.html#ray-serve-autoscalin
-* Details how to properly configure them for kuberay can be found here: https://github.com/ray-project/kuberay/blob/master/ray-operator/config/samples/ray-service.autoscaler.yaml
-* A good example to illustrate the above with kuberay and autoscaling on time-shared GPUs would be: https://github.com/ray-project/kuberay/blob/master/ray-operator/config/samples/ray-service.stable-diffusion.yaml
+* The example here is not fine-tuned: Make sure the ray worker group and your workload scale well with the chosen machine-type and time-shared GPU.
+* Before scaling out in a single region consider adding a second zone to your node-pool. For independent scaling of zones a second node-pool is also an option.
+* Consider persisting logs: https://docs.ray.io/en/latest/cluster/kubernetes/user-guides/logging.html
+* We intentionally use Ubuntu rather than COS as Ray's default images seem to have issues with non-Debian host-OSs.
 

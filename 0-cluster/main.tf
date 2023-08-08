@@ -66,7 +66,7 @@ module "network" {
   depends_on = [google_project_service.services]
 }
 
-# Create GKE Autopilot cluster, where platform components will run in, e.g. ArgoCD and Tekton
+# Create GKE Standard cluster with two node-pools: one for general workloads and another zonal pool for gpu-sharing
 
 module "cluster" {
   source = "../modules//cluster"
@@ -77,6 +77,29 @@ module "cluster" {
   network_id             = module.network.id
   subnetwork_id          = module.network.subnetworks["network-kuberay-main-${var.region}"].id
   master_ipv4_cidr_block = "172.16.0.0/28"
+
+  node_pools = {
+    cluster-kuberay-default = {
+      machine_type   = "n1-standard-8"
+      max_node_count = 8
+    }
+    cluster-kuberay-gpu-sharing = {
+      # NOTE: I had issues running ray on COS leveraging GPUs and did not dig deeper,
+      #       but native CUDA worked but the Ray images had issues detecting the GPU...
+      #       => using Ubuntu instead...
+      image_type     = "UBUNTU_CONTAINERD"
+      machine_type   = "n1-standard-16"
+      node_locations = ["${var.region}-a"]
+      min_node_count = 1
+      max_node_count = 1 # let's limit costs of this example
+      guest_accelerator = {
+        type                       = "nvidia-tesla-t4"
+        count                      = 1
+        gpu_sharing_strategy       = "TIME_SHARING"
+        max_shared_clients_per_gpu = 8
+      }
+    }
+  }
 
   depends_on = [module.network]
 }
