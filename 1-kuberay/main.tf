@@ -1,6 +1,6 @@
 terraform {
   backend "gcs" {
-    bucket = "nvoss-kuberay-tf-state"
+    bucket = "nvoss-kuberay-demo-tf-state"
     prefix = "terraform/1-operator"
   }
 }
@@ -22,7 +22,7 @@ data "google_client_config" "cluster" {}
 data "google_container_cluster" "cluster" {
   project  = var.project
   location = var.region
-  name     = "cluster-kuberay"
+  name     = "demo-cluster" # hardcoded!
 }
 
 provider "kubernetes" {
@@ -44,4 +44,39 @@ resource "helm_release" "kuberay-operator" {
   repository = "https://ray-project.github.io/kuberay-helm/"
   chart      = "kuberay-operator"
   version    = var.operator_version
+
+  values = [<<EOF
+env:
+- name: CLUSTER_DOMAIN
+  value: "demo-cluster"
+EOF
+  ]
 }
+
+resource "kubernetes_config_map" "fluent-bit" {
+  metadata {
+    name = "fluentbit-config"
+  }
+
+  data = {
+    "fluent-bit.conf" = "${file("${path.module}/fluent-bit.conf")}"
+    "parsers.conf"    = "${file("${path.module}/parsers.conf")}"
+  }
+}
+
+resource "helm_release" "kuberay-l4-cluster" {
+  name       = "l4-cluster"
+  repository = "https://ray-project.github.io/kuberay-helm/"
+  chart      = "ray-cluster"
+  version    = var.operator_version
+
+  values = [file("${path.module}/cluster-base.yaml")]
+
+  depends_on = [
+    helm_release.kuberay-operator,
+    kubernetes_config_map.fluent-bit
+  ]
+}
+
+# TODO: google_workbench_instance not yet supported :/
+

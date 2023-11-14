@@ -1,0 +1,121 @@
+image:
+  # Replace this with your own image if needed.
+  repository: rayproject/ray
+  tag: 2.7.1-py310-gpu
+  pullPolicy: IfNotPresent
+
+head:
+  groupName: headgroup
+  image:
+    # Replace this with your own image if needed.
+    repository: rayproject/ray
+    tag: 2.7.1-py310
+  labels:
+    cloud.google.com/gke-ray-node-type: head
+  rayStartParams:
+    dashboard-host: '0.0.0.0'
+    block: 'true'
+  containerEnv:
+    - name: RAY_memory_monitor_refresh_ms
+      value: "0"
+  envFrom: []
+  resources:
+    limits:
+      cpu: "4"
+      # To avoid out-of-memory issues, never allocate less than 2G memory for the Ray head.
+      memory: "8G"
+      ephemeral-storage: 20Gi
+    requests:
+      cpu: "4"
+      memory: "8G"
+      ephemeral-storage: 10Gi
+  annotations: {}
+  tolerations: []
+  affinity: {}
+  securityContext: {}
+  volumes:
+    - name: ray-logs
+      emptyDir: {}
+    - name: fluentbit-config
+      configMap:
+        name: fluentbit-config
+  # Ray writes logs to /tmp/ray/session_latests/logs
+  volumeMounts:
+    - mountPath: /tmp/ray
+      name: ray-logs
+  sidecarContainers:
+    - name: fluentbit
+      image: fluent/fluent-bit:1.9.6
+      # These resource requests for Fluent Bit should be sufficient in production.
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+          ephemeral-storage: 2Gi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+          ephemeral-storage: 4Gi
+      volumeMounts:
+      - mountPath: /tmp/ray
+        name: ray-logs
+      - mountPath: /fluent-bit/etc/
+        name: fluentbit-config
+
+worker:
+  groupName: workergroup
+  replicas: 1
+  type: worker
+  labels:
+    cloud.google.com/gke-ray-node-type: worker
+  rayStartParams:
+    block: 'true'
+  resources:
+    limits:
+      cpu: "1"
+      nvidia.com/gpu: "1"
+      memory: "20G"
+      ephemeral-storage: 20Gi
+    requests:
+      cpu: "1"
+      nvidia.com/gpu: "1"
+      memory: "20G"
+      ephemeral-storage: 10Gi
+  annotations:
+    key: value
+  nodeSelector:
+    cloud.google.com/gke-accelerator: "nvidia-l4"
+  tolerations: []
+  affinity: {}
+  securityContext: {}
+  volumes:
+    - name: ray-logs
+      emptyDir: {}
+    - name: fluentbit-config
+      configMap:
+        name: fluentbit-config
+  # Ray writes logs to /tmp/ray/session_latests/logs
+  volumeMounts:
+    - mountPath: /tmp/ray
+      name: ray-logs
+  sidecarContainers:
+    - name: fluentbit
+      image: fluent/fluent-bit:1.9.6
+      # These resource requests for Fluent Bit should be sufficient in production.
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+          ephemeral-storage: 2Gi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+          ephemeral-storage: 4Gi
+      volumeMounts:
+      - mountPath: /tmp/ray
+        name: ray-logs
+      - mountPath: /fluent-bit/etc/
+        name: fluentbit-config
+
+service:
+  type: ClusterIP

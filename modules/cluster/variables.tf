@@ -37,6 +37,11 @@ variable "release_channel" {
   default = "REGULAR"
 }
 
+variable "dns_scope" {
+  type    = string
+  default = "CLUSTER_SCOPE"
+}
+
 variable "node_pools" {
   type = map(object({
     machine_type    = string
@@ -46,7 +51,8 @@ variable "node_pools" {
     max_node_count  = number
     max_surge       = optional(number, 1)
     max_unavailable = optional(number, 0)
-    preemptible     = optional(bool, false)
+    spot            = optional(bool, false)
+    disk_type       = optional(string, "pd-standard")
     guest_accelerator = optional(object({
       type                       = string
       count                      = number

@@ -76,11 +76,25 @@ resource "google_container_cluster" "cluster" {
     workload_pool = "${var.project}.svc.id.goog"
   }
 
+  dns_config {
+    cluster_dns        = "CLOUD_DNS"
+    cluster_dns_scope  = var.dns_scope
+    cluster_dns_domain = var.dns_scope == "VPC_SCOPE" ? var.name : null
+  }
+
   node_config {
     # Argolis specific to avoid issue with org-policy
     shielded_instance_config {
       enable_secure_boot          = true
       enable_integrity_monitoring = true
+    }
+  }
+
+  node_pool_defaults {
+    node_config_defaults {
+      gcfs_config {
+        enabled = true
+      }
     }
   }
 
@@ -144,10 +158,10 @@ resource "google_container_node_pool" "default" {
   node_config {
     image_type      = each.value.image_type
     machine_type    = each.value.machine_type
-    preemptible     = each.value.preemptible
+    spot            = each.value.spot
     local_ssd_count = 0
     disk_size_gb    = 80
-    disk_type       = "pd-standard"
+    disk_type       = each.value.disk_type
 
     # No access to legacy metadata servers
     metadata = {
@@ -171,15 +185,20 @@ resource "google_container_node_pool" "default" {
       content {
         type  = guest_accelerator.value.type
         count = guest_accelerator.value.count
-        gpu_sharing_config {
-          gpu_sharing_strategy       = guest_accelerator.value.gpu_sharing_strategy
-          max_shared_clients_per_gpu = guest_accelerator.value.max_shared_clients_per_gpu
+        dynamic "gpu_sharing_config" {
+          for_each = guest_accelerator.value.gpu_sharing_strategy != null ? [1] : []
+          content {
+            gpu_sharing_strategy       = guest_accelerator.value.gpu_sharing_strategy
+            max_shared_clients_per_gpu = guest_accelerator.value.max_shared_clients_per_gpu
+          }
         }
         gpu_driver_installation_config {
           gpu_driver_version = guest_accelerator.value.gpu_driver_version
         }
       }
     }
+
+
 
     # TODO: only relying on NVIDIA taint for now
     #       https://github.com/hashicorp/terraform-provider-google/issues/7928

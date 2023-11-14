@@ -5,7 +5,7 @@ Before starting make sure `gcloud` and `terraform` are installed and create a ne
 ## Bucket for terraform-state
 
 ```bash
-export PROJECT="nvoss-kuberay"
+export PROJECT="nvoss-kuberay-demo"
 export REGION="europe-west4"
 gsutil mb -p ${PROJECT} -l ${REGION} -b on gs://${PROJECT}-tf-state
 gsutil versioning set on gs://${PROJECT}-tf-state
@@ -17,7 +17,7 @@ gcloud auth application-default login --project ${PROJECT}
 
 Update all *.tfvars files and make sure the state is saved to your bucket:
 ```bash
-rg -l 'backend "gcs"' | xargs -I{} sed -i "s/nvoss-kuberay-tf-state/${PROJECT}-tf-state/g" {}
+rg -l 'backend "gcs"' | xargs -I{} sed -i "s/nvoss-kuberay-demo-tf-state/${PROJECT}-tf-state/g" {}
 ```
 
 ## Create the GKE cluster and node-pools
@@ -25,6 +25,22 @@ rg -l 'backend "gcs"' | xargs -I{} sed -i "s/nvoss-kuberay-tf-state/${PROJECT}-t
 ```bash
 terraform -chdir=0-cluster init
 terraform -chdir=0-cluster apply
+```
+
+## Duplicate images
+CLOUD SHELL!
+```bash
+docker pull rayproject/ray:2.7.1-py310
+docker tag rayproject/ray:2.7.1-py310 ${REGION}-docker.pkg.dev/${PROJECT}/images/ray:2.7.1-py310
+docker push ${REGION}-docker.pkg.dev/${PROJECT}/images/ray:2.7.1-py310
+# On cloud shell space might not be sufficient, so before pulling gpu image, let's clean up
+docker rmi rayproject/ray:2.7.1-py310
+docker rmi ${REGION}-docker.pkg.dev/${PROJECT}/images/ray:2.7.1-py310
+docker pull rayproject/ray:2.7.1-py310-gpu
+docker tag rayproject/ray:2.7.1-py310-gpu ${REGION}-docker.pkg.dev/${PROJECT}/images/ray:2.7.1-py310-gpu
+docker push ${REGION}-docker.pkg.dev/${PROJECT}/images/ray:2.7.1-py310-gpu
+docker rmi rayproject/ray:2.7.1-py310-gpu
+docker rmi ${REGION}-docker.pkg.dev/${PROJECT}/images/ray:2.7.1-py310-gpu
 ```
 
 __NOTE__: Checkout `0-cluster/main.tf` for the particular node-pool configurations and how [time-sharing](https://cloud.google.com/kubernetes-engine/docs/concepts/timesharing-gpus) of GPUs is set up.
@@ -35,13 +51,16 @@ terraform -chdir=1-kuberay init
 terraform -chdir=1-kuberay apply
 ```
 
-__NOTE__: For simplicity we just use the `default`-namespace...
+## Create a Workbench Instance
 
+https://cloud.google.com/vertex-ai/docs/workbench/instances/introduction
+
+__NOTE__: For simplicity we just use the `default`-namespace...
 ## Create an example `RayService`
 
 Get credentials for the GKE cluster:
 ```bash
-gcloud container clusters get-credentials cluster-kuberay --region ${REGION} --project ${PROJECT}
+gcloud container clusters get-credentials demo-cluster --region ${REGION} --project ${PROJECT}
 ```
 
 Create the example stable-diffusion `RayService`:
